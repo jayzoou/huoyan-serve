@@ -62,7 +62,7 @@ router.get('/test', (req, res) => {
   res.send('Hello World!')
 })
 
-router.post('/post', (req, res) => {
+router.post('/posttest', (req, res) => {
   res.send('post test')
 })
 
