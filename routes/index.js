@@ -1,10 +1,60 @@
-var express = require('express');
-var router = express.Router();
-
+let express = require('express');
+let router = express.Router();
 const axios = require('axios');
 const multer = require('multer');
 const AK = process.env.BAIDU_API_KEY
 const SK = process.env.BAIDU_SECRET_KEY
+
+// ml5 等价方案：在 Node.js 中使用 TensorFlow.js (纯JS) + MobileNet 进行图片识别
+// const tf = require('@tensorflow/tfjs');
+// const mobilenetModule = require('@tensorflow-models/mobilenet');
+// const { Jimp } = require('jimp');
+
+let mobilenetModel = null;
+
+async function loadMobilenetModel() {
+    if (!mobilenetModel) {
+        console.log('Loading MobileNet model (ml5)...');
+        mobilenetModel = await mobilenetModule.load();
+        console.log('MobileNet model loaded.');
+    }
+    return mobilenetModel;
+}
+
+/**
+ * 使用 ml5/MobileNet 对图片进行本地分类识别
+ * @param {Buffer} imageBuffer - 原始图片 Buffer
+ * @returns {Array} predictions - [{ className, probability }]
+ */
+async function classifyWithMl5(imageBuffer) {
+    const model = await loadMobilenetModel();
+
+    // 用 Jimp 解码图片并缩放到 MobileNet 要求的 224x224
+    const image = await Jimp.fromBuffer(imageBuffer);
+    image.resize({ w: 224, h: 224 });
+
+    const width = image.bitmap.width;
+    const height = image.bitmap.height;
+
+    // 提取 RGB 像素（去掉 alpha 通道）
+    const pixels = new Int32Array(width * height * 3);
+    let i = 0;
+    image.scan(0, 0, width, height, function(x, y, idx) {
+        pixels[i++] = this.bitmap.data[idx];     // R
+        pixels[i++] = this.bitmap.data[idx + 1]; // G
+        pixels[i++] = this.bitmap.data[idx + 2]; // B
+    });
+
+    const tensor = tf.tensor3d(pixels, [height, width, 3], 'int32');
+    try {
+        const predictions = await model.classify(tensor);
+        console.log('ml5/MobileNet predictions:', predictions);
+        return predictions;
+    } finally {
+        console.log('Disposing tensor to free memory');
+        tensor.dispose();
+    }
+}
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -67,18 +117,52 @@ router.post('/posttest', (req, res) => {
   res.json('post test')
 })
 
-/* POST /discern - accept JSON { image: '<base64 or data-uri>' } */
-// Accept either JSON { image: '<base64 or data-uri>' } or multipart file upload field `file`
+/* POST /discern - accept JSON { image: '<base64 or data-uri>' } or multipart file upload field `file`
+   策略：先用 ml5 (MobileNet) 本地识别，失败或置信度不足时回退到百度 API */
 router.post('/discern', upload.single('file'), async function(req, res, next) {
     try {
-        var image = null;
+        // var imageBuffer = null;
+        // var imageBase64 = null;
+
+        // // 优先处理 multipart 文件上传 (wx.uploadFile 发送 'file' 字段)
+        // if (req.file && req.file.buffer) {
+        //     imageBuffer = req.file.buffer;
+        //     imageBase64 = req.file.buffer.toString('base64');
+        // } else if (req.body && req.body.image) {
+        //     var imgStr = req.body.image;
+        //     var comma = imgStr.indexOf(',');
+        //     if (imgStr.indexOf('data:') === 0 && comma !== -1) {
+        //         imgStr = imgStr.slice(comma + 1);
+        //     }
+        //     imageBase64 = imgStr;
+        //     imageBuffer = Buffer.from(imgStr, 'base64');
+        // }
+
+        // if (!imageBuffer) {
+        //     return res.status(400).json({ error: 'missing image (either upload field `file` or JSON `image`)' });
+        // }
+
+        // 第一步：尝试用 ml5 (MobileNet) 本地识别
+        // try {
+        //     const predictions = await classifyWithMl5(imageBuffer);
+        //     if (predictions && predictions.length > 0 && predictions[0].probability >= 0.1) {
+        //         console.log('ml5 classification succeeded:', predictions);
+        //         return res.json(predictions);
+        //     }
+        //     console.warn('ml5 returned low-confidence results, falling back to Baidu API.');
+        // } catch (ml5Err) {
+        //     console.warn('ml5 classification failed, falling back to Baidu API:', ml5Err.message);
+        // }
+
+        // 第二步：回退到百度第三方接口
+        let image = null;
 
         // prefer multipart file upload (wx.uploadFile sends field 'file')
         if (req.file && req.file.buffer) {
             image = req.file.buffer.toString('base64');
         } else if (req.body && req.body.image) {
             image = req.body.image;
-            var comma = image.indexOf(',');
+            let comma = image.indexOf(',');
             if (image.indexOf('data:') === 0 && comma !== -1) {
                 image = image.slice(comma + 1);
             }
@@ -86,7 +170,7 @@ router.post('/discern', upload.single('file'), async function(req, res, next) {
 
         if (!image) return res.status(400).json({ error: 'missing image (either upload field `file` or JSON `image`)' });
 
-        var result = await main(image);
+        let result = await main(image);
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.json(result);
     } catch (err) {
