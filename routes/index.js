@@ -63,7 +63,7 @@ router.get('/test', (req, res) => {
 })
 
 router.post('/posttest', (req, res) => {
-  res.send('post test')
+  res.json('post test')
 })
 
 /* POST /discern - accept JSON { image: '<base64 or data-uri>' } */
