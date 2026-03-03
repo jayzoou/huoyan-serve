@@ -53,6 +53,7 @@ function getAccessToken() {
               resolve(res.data.access_token)
           })
           .catch(error => {
+            console.error('Error fetching access token', error);
               reject(error)
           })
     })
@@ -85,6 +86,7 @@ router.post('/discern', upload.single('file'), async function(req, res, next) {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.json(result);
     } catch (err) {
+        console.error('Error processing /discern request', err);
         res.status(500).json({ error: err.message || String(err) });
     }
 });
