@@ -10,6 +10,14 @@ var indexRouter = require('./routes/index');
 
 var app = express();
 
+app.use((req, _res, next) => {
+  console.log('DEPLOYMENT env check:',
+    'BAIDU_API_KEY=', process.env.BAIDU_API_KEY,
+    'BAIDU_API_KEY=', process.env.BAIDU_API_KEY,
+  )
+  next()
+})
+
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 
