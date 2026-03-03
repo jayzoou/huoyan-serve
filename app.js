@@ -11,6 +11,29 @@ var indexRouter = require('./routes/index');
 
 var app = express();
 
+// 配置跨域
+const allowlist = [
+  'https://servicewechat.com',
+];
+
+app.use(cors({
+  origin(origin, cb) {
+    // 无 Origin（如 curl / server-to-server）也放行
+    if (!origin) return cb(null, true);
+
+    if (allowlist.includes(origin)) return cb(null, true);
+    return cb(new Error('Not allowed by CORS'));
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true, // 如果你要带 cookie/鉴权信息才开
+  maxAge: 86400,     // 预检缓存
+}));
+
+// 预检请求（关键：Vercel/浏览器会先发 OPTIONS）
+app.options('*', cors());
+
+
 app.use((req, _res, next) => {
   console.log('DEPLOYMENT env check:',
     'BAIDU_API_KEY=', process.env.BAIDU_API_KEY,
