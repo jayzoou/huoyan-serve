@@ -62,6 +62,10 @@ router.get('/test', (req, res) => {
   res.send('Hello World!')
 })
 
+router.post('/post', (req, res) => {
+  res.send('post test')
+})
+
 /* POST /discern - accept JSON { image: '<base64 or data-uri>' } */
 // Accept either JSON { image: '<base64 or data-uri>' } or multipart file upload field `file`
 router.post('/discern', upload.single('file'), async function(req, res, next) {
