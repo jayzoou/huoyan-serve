@@ -63,6 +63,7 @@ router.get('/test', (req, res) => {
 })
 
 router.post('/posttest', (req, res) => {
+  console.log(req.headers.origin, 'req.headers.origin')
   res.json('post test')
 })
 

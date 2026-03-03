@@ -12,42 +12,7 @@ var indexRouter = require('./routes/index');
 var app = express();
 
 // 配置跨域
-const allowlist = [
-  'https://servicewechat.com',
-  'https://servicewechat.com/wx635e4a26b43e8ad4/devtools/page-frame.html',
-];
-
-// 允许微信相关 Origin（开发者工具/小程序 WebView 常见）
-// 你也可以先在后端打印 req.headers.origin 来确认你本机具体是什么
-function isWeChatOrigin(origin) {
-  if (!origin) return false
-  return (
-    origin.includes('servicewechat.com') ||     // 常见：小程序相关
-    origin.includes('wechatdevtools') ||        // 部分情况下 devtools 会出现
-    origin.includes('qq.com')                   // 有时会走到 qq.com 域
-  )
-}
-
-app.use(cors({
-  origin(origin, cb) {
-    // 没有 Origin（如 curl、server-to-server）放行
-    if (!origin) return cb(null, true)
-
-    if (allowlist.includes(origin) || isWeChatOrigin(origin)) {
-      return cb(null, true)
-    }
-    return cb(new Error(`Not allowed by CORS: ${origin}`))
-  },
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  // 小程序大多用 token header，不一定需要 cookie；不需要就别开，省坑
-  credentials: false,
-  maxAge: 86400,
-}))
-
-// 关键：预检 OPTIONS
-app.options('*', cors())
-
+app.use(cors());
 
 app.use((req, _res, next) => {
   console.log('DEPLOYMENT env check:',
