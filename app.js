@@ -46,9 +46,19 @@ app.use(function(err, req, res, next) {
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-  // render the error page
+  // send JSON error response for API clients
   res.status(err.status || 500);
-  res.render('error');
+  const errorResponse = {
+    success: false,
+    error: {
+      message: err.message,
+      status: err.status || 500,
+    }
+  };
+  if (req.app.get('env') === 'development') {
+    errorResponse.error.stack = err.stack;
+  }
+  res.json(errorResponse);
 });
 
 module.exports = app;
