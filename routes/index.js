@@ -53,7 +53,6 @@ function getAccessToken() {
               resolve(res.data.access_token)
           })
           .catch(error => {
-            console.error('Error fetching access token', error);
               reject(error)
           })
     })
@@ -66,6 +65,7 @@ router.get('/test', (req, res) => {
 /* POST /discern - accept JSON { image: '<base64 or data-uri>' } */
 // Accept either JSON { image: '<base64 or data-uri>' } or multipart file upload field `file`
 router.post('/discern', upload.single('file'), async function(req, res, next) {
+    console.log('Received request to /discern with body', req.body, 'and file', req.file);
     try {
         var image = null;
 
@@ -86,7 +86,6 @@ router.post('/discern', upload.single('file'), async function(req, res, next) {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.json(result);
     } catch (err) {
-        console.error('Error processing /discern request', err);
         res.status(500).json({ error: err.message || String(err) });
     }
 });
